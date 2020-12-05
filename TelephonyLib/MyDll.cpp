@@ -2,11 +2,14 @@
 #include <memoryapi.h>
 #include <map>
 #include <vector>
+#include <string>
 #include <stdlib.h>
 
-#define BUFFERSIZE 6
 TCHAR keyName[] = TEXT("WinApiCriticalSection");
 TCHAR fileName[] = TEXT("C:\\Users\\konst_9hggwum\\source\\repos\\Telephony\\Telephony\\Debug\\s");
+std::map <int, Page*> directory;
+std::vector<std::string> directoryKeys;
+std::vector<Page> pages;
 
 struct Page
 {
@@ -34,6 +37,23 @@ void CreateFileMappingPages()
 	{
 		return;
 	}
+}
+
+std::vector<Page> FindPages(int number)
+{
+	std::string numberString = std::to_string(number);
+
+	std::vector<Page> findedPages;
+
+	for (int i = 0; i < directoryKeys.size(); i++)
+	{
+		if (directoryKeys.at(i).find(numberString) != std::string::npos)
+		{
+			findedPages.push_back(*directory[std::stoi(directoryKeys.at(i))]);
+		}
+	}
+
+	return findedPages;
 }
 
 void DumpEntries(std::vector<Page> pages)

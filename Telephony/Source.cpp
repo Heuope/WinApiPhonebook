@@ -14,7 +14,7 @@ typedef void(*MYFUNC)(char*);
 
 TCHAR keyName[] = TEXT("WinApiCriticalSection");
 TCHAR dllName[] = TEXT("TelephonyLib");
-TCHAR fileName[] = TEXT("C:\\Users\\konst_9hggwum\\source\\repos\\Telephony\\Telephony\\Debug\\s");
+TCHAR fileName[] = TEXT("C:\\Users\\konst_9hggwum\\OneDrive\\Desktop\\WinApiPhonebook\\Telephony\\Debug\\s");
 
 typedef struct
 {
@@ -22,7 +22,9 @@ typedef struct
 	char FirstName[20];
 } Page;
 
-std::map <int, Page> directory;
+std::map <int, Page*> directory;
+std::vector<std::string> directoryKeys;
+
 std::vector<Page> pages;
 
 void CreateFileMappingPages()
@@ -112,26 +114,42 @@ std::wstring GetExePath()
 	return std::wstring(buffer).substr(0, pos);
 }
 
+std::vector<Page> FindPages(int number)
+{
+	std::string numberString = std::to_string(number);
+
+	std::vector<Page> findedPages;
+
+	for (int i = 0; i < directoryKeys.size(); i++)
+	{
+		if (directoryKeys.at(i).find(numberString) != std::string::npos) 
+		{
+			findedPages.push_back(*directory[std::stoi(directoryKeys.at(i))]);
+		}
+	}
+
+	return findedPages;
+}
+
 int main()
 {
-	//LoadFiles();
 	Page temp1;
 	Page temp2;
 	char some[20] = "asd";
 
-	temp1.PhoneNumber = 1;
+	temp1.PhoneNumber = 132;
 	temp1.FirstName[0] = some[0];
 	temp1.FirstName[1] = '\0';
 
-	temp2.PhoneNumber = 2;
+	temp2.PhoneNumber = 21;
 	temp2.FirstName[0] = some[0];
 	temp2.FirstName[1] = '\0';
 
 	pages.push_back(temp1);
 	pages.push_back(temp2);
 
-	//DumpEntries();
-	CreateFileMappingPages();
+	DumpEntries();
+	//CreateFileMappingPages();
 
 	Page* readPages;
 	DWORD number_of_entries = 0;
@@ -140,8 +158,11 @@ int main()
 
 	for (int i = 0; i < number_of_entries; i++)
 	{
-		directory[readPages[i].PhoneNumber] = readPages[i];
+		directory[readPages[i].PhoneNumber] = &readPages[i];
+		directoryKeys.push_back(std::to_string(readPages[i].PhoneNumber));
 	}
+
+	std::vector<Page> se = FindPages(2);
 
 	if (number_of_entries != 0) delete readPages;
 
