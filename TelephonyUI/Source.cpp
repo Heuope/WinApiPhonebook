@@ -5,7 +5,11 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <windowsx.h>
 #include <string>
 
+#define ID_LIST 1
+
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+
+static HWND hListBox;
 
 int CALLBACK  wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR szCmdLine, int nCmdShow)
 {
@@ -47,14 +51,22 @@ int CALLBACK  wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR szCmdLine, int nCmd
 	return static_cast<int> (msg.wParam);
 }
 
-void CreateButtons(HWND hEdit, HWND hWnd)
+void CreateUI(HWND hEdit, HWND hWnd)
 {
-	/*HWND hChangeColor = CreateWindow(
+	hListBox = CreateWindow(L"listbox", NULL,
+		WS_CHILD | WS_VISIBLE | LBS_STANDARD |
+		LBS_WANTKEYBOARDINPUT,
+		30, 30, 200, 100,
+		hWnd, (HMENU)ID_LIST, nullptr, nullptr);
+
+	SendMessage(hListBox, LB_ADDSTRING, 0, (LPARAM)(LPSTR)"we");
+
+	HWND hChangeColor = CreateWindow(
 		L"BUTTON",
 		L"Change color",
 		WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
 		0, 0, 100, 50, hWnd, reinterpret_cast<HMENU>(0), nullptr, nullptr
-	);*/
+	);
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -63,12 +75,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	if (message == WM_CREATE)
 	{
-		CreateButtons(hEdit, hWnd);
+		CreateUI(hEdit, hWnd);
 	}
 
 	switch (message)
 	{
 		case WM_COMMAND:
+			switch (LOWORD(wParam))
+			{
+				case 0:
+					color = ChangeColor(hWnd);
+					break;
+				default:
+					break;
+			}
 			break;
 		case WM_RBUTTONDOWN:
 			break;
