@@ -169,7 +169,7 @@ int main()
 	//HINSTANCE hMyDll;
 	//if ((hMyDll = LoadLibrary(dllName)) == NULL)
 	//{ 
-	//	/* не удалось загрузить DLL */ 
+	//	/* пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ DLL */ 
 	//}
 	//else 
 	//{

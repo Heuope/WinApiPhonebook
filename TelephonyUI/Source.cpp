@@ -6,10 +6,19 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <string>
 
 #define ID_LIST 1
+#define BUFFERSIZE 5000
+#define MEMSIZE 90024 
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
-static HWND hListBox;
+typedef int(__stdcall* PFN_MyFunction)();
+typedef void(*MYFUNC)(char*);
+
+TCHAR dllName[] = TEXT("TelephonyLib");
+
+HINSTANCE hMyDll;
+HWND hListBox;
+HWND Text;
 
 int CALLBACK  wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR szCmdLine, int nCmdShow)
 {
@@ -56,16 +65,23 @@ void CreateUI(HWND hEdit, HWND hWnd)
 	hListBox = CreateWindow(L"listbox", NULL,
 		WS_CHILD | WS_VISIBLE | LBS_STANDARD |
 		LBS_WANTKEYBOARDINPUT,
-		30, 30, 200, 100,
+		20, 50, 500, 300,
 		hWnd, (HMENU)ID_LIST, nullptr, nullptr);
 
 	SendMessage(hListBox, LB_ADDSTRING, 0, (LPARAM)(LPSTR)"we");
 
 	HWND hChangeColor = CreateWindow(
 		L"BUTTON",
-		L"Change color",
+		L"Find",
 		WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-		0, 0, 100, 50, hWnd, reinterpret_cast<HMENU>(0), nullptr, nullptr
+		20, 20, 50, 20, hWnd, reinterpret_cast<HMENU>(0), nullptr, nullptr
+	);
+
+	Text = CreateWindow(
+		L"EDIT",
+		L"",
+		WS_BORDER | WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+		80, 20, 440, 20, hWnd, reinterpret_cast<HMENU>(14), nullptr, nullptr
 	);
 }
 
@@ -84,7 +100,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			switch (LOWORD(wParam))
 			{
 				case 0:
-					color = ChangeColor(hWnd);
+					LPTSTR pBuffer = new TCHAR[128];
+					GetWindowText(Text, pBuffer, 128);
+
+					// Load data from dll					
+					if ((hMyDll = LoadLibrary(dllName)) != NULL)
+					{ 
+						MYFUNC pfnMyFunction;
+
+						pfnMyFunction = (MYFUNC)GetProcAddress(hMyDll, "Summa");
+
+						int iCode = pfnMyFunction(1, 2);
+
+						FreeLibrary(hMyDll);
+					}										
 					break;
 				default:
 					break;
