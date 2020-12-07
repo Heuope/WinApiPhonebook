@@ -6,24 +6,23 @@
 #include <vector>
 #include <stdlib.h>
 
-#define BUFFERSIZE 5000
-#define MEMSIZE 90024 
-
-typedef int (__stdcall* PFN_MyFunction)();
-typedef void(*MYFUNC)(char*);
-
-TCHAR keyName[] = TEXT("WinApiCriticalSection");
-TCHAR dllName[] = TEXT("TelephonyLib");
-TCHAR fileName[] = TEXT("C:\\Users\\konst_9hggwum\\OneDrive\\Desktop\\WinApiPhonebook\\Telephony\\Debug\\s");
+typedef std::vector<std::string>(*MYFUNC)(int);
 
 typedef struct
 {
 	int PhoneNumber;
 	char FirstName[20];
+	char SecondName[20];
+	char LastName[20];
+	char Address[40];
+	short Dom;
+	short Korpus;
+	short Hata;
 } Page;
 
-std::map <int, Page*> directory;
-std::vector<std::string> directoryKeys;
+TCHAR keyName[] = TEXT("WinApiTelephony");
+TCHAR dllName[] = TEXT("TelephonyLib");
+TCHAR fileName[] = TEXT("C:\\Users\\konst\\Desktop\\WinApiPhonebook\\Telephony\\x64\\Debug\\s");
 
 std::vector<Page> pages;
 
@@ -73,39 +72,6 @@ void DumpEntries()
 	UnmapViewOfFile(vMapData);
 }
 
-void ReadEntries(Page** entries, DWORD& number_of_entries)
-{
-	HANDLE hMapFile = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, keyName);
-	if (hMapFile == NULL) 
-	{
-		return;
-	}
-
-	DWORD* num_entries = (DWORD*)MapViewOfFile(hMapFile, FILE_MAP_ALL_ACCESS, 0, 0, 0);
-	if (num_entries == NULL) 
-	{
-		CloseHandle(hMapFile);
-	}
-	number_of_entries = *num_entries;
-
-	if (number_of_entries == 0)
-	{
-		*entries = NULL;
-	}
-
-	Page* tmpEntries = (Page*)(num_entries + 1);
-
-	*entries = new Page[*num_entries];
-
-	for (UINT i = 0; i < *num_entries; i++) 
-	{
-		(*entries)[i] = tmpEntries[i];
-	}
-
-	UnmapViewOfFile(num_entries);
-	CloseHandle(hMapFile);
-}
-
 std::wstring GetExePath()
 {
 	TCHAR buffer[MAX_PATH];
@@ -114,72 +80,61 @@ std::wstring GetExePath()
 	return std::wstring(buffer).substr(0, pos);
 }
 
-std::vector<Page> FindPages(int number)
+void CopyData(char* dest, const char* source)
 {
-	std::string numberString = std::to_string(number);
-
-	std::vector<Page> findedPages;
-
-	for (int i = 0; i < directoryKeys.size(); i++)
+	for (int i = 0; i < std::strlen(source); i++)
 	{
-		if (directoryKeys.at(i).find(numberString) != std::string::npos) 
-		{
-			findedPages.push_back(*directory[std::stoi(directoryKeys.at(i))]);
-		}
+		dest[i] = source[i];
+		dest[i + 1] = '\0';
 	}
-
-	return findedPages;
 }
 
-int main()
+void CreateDump()
 {
 	Page temp1;
 	Page temp2;
-	char some[20] = "asd";
 
 	temp1.PhoneNumber = 132;
-	temp1.FirstName[0] = some[0];
-	temp1.FirstName[1] = '\0';
+	temp1.Dom = 42;
+	temp1.Hata = 42;
+	temp1.Korpus = 42;
+	CopyData(temp1.Address, "asd");
+	CopyData(temp1.FirstName, "asd");
+	CopyData(temp1.SecondName, "asd");
+	CopyData(temp1.LastName, "asd");
 
-	temp2.PhoneNumber = 21;
-	temp2.FirstName[0] = some[0];
-	temp2.FirstName[1] = '\0';
+	temp2.PhoneNumber = 45;
+	temp2.Dom = 1;
+	temp2.Hata = 2;
+	temp2.Korpus = 3;
+	CopyData(temp2.Address, "e");
+	CopyData(temp2.FirstName, "e");
+	CopyData(temp2.SecondName, "aese");
+	CopyData(temp2.LastName, "eeee");
 
 	pages.push_back(temp1);
 	pages.push_back(temp2);
 
 	DumpEntries();
-	//CreateFileMappingPages();
+}
 
-	Page* readPages;
-	DWORD number_of_entries = 0;
+int main()
+{	
+	//CreateDump();	
 
-	ReadEntries(&readPages, number_of_entries);
-
-	for (int i = 0; i < number_of_entries; i++)
+	HINSTANCE hMyDll;
+	if ((hMyDll = LoadLibrary(dllName)) == NULL)
+	{ 
+		
+	}
+	else 
 	{
-		directory[readPages[i].PhoneNumber] = &readPages[i];
-		directoryKeys.push_back(std::to_string(readPages[i].PhoneNumber));
+		MYFUNC pfnMyFunction;
+
+		pfnMyFunction = (MYFUNC)GetProcAddress(hMyDll, "FindDataByPhoneNuber");
+
+		std::vector<std::string> iCode = pfnMyFunction(3);
 	}
 
-	std::vector<Page> se = FindPages(2);
-
-	if (number_of_entries != 0) delete readPages;
-
-	//HINSTANCE hMyDll;
-	//if ((hMyDll = LoadLibrary(dllName)) == NULL)
-	//{ 
-	//	/* �� ������� ��������� DLL */ 
-	//}
-	//else 
-	//{
-	//	MYFUNC pfnMyFunction;
-
-	//	pfnMyFunction = (MYFUNC)GetProcAddress(hMyDll, "Summa");
-
-	//	int iCode = pfnMyFunction(1, 2);
-	//	std::cout << iCode << std::endl;
-	//}
-
-	//FreeLibrary(hMyDll);
+	FreeLibrary(hMyDll);
 }

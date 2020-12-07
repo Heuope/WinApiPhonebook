@@ -1,27 +1,30 @@
+#include <iostream>
 #include <windows.h>
 #include <memoryapi.h>
+#include <string>
 #include <map>
 #include <vector>
-#include <string>
 #include <stdlib.h>
 
-TCHAR keyName[] = TEXT("WinApiCriticalSection");
-TCHAR fileName[] = TEXT("C:\\Users\\konst_9hggwum\\source\\repos\\Telephony\\Telephony\\Debug\\s");
+TCHAR keyName[] = TEXT("WinApiTelephony");
+TCHAR fileName[] = TEXT("C:\\Users\\konst\\Desktop\\WinApiPhonebook\\Telephony\\x64\\Debug\\s");
+
+typedef struct
+{
+	int PhoneNumber;
+	char FirstName[20];
+	char SecondName[20];
+	char LastName[20];
+	char Address[40];
+	short Dom;
+	short Korpus;
+	short Hata;
+} Page;
+
+Page* readPages;
 std::map <int, Page*> directory;
 std::vector<std::string> directoryKeys;
 std::vector<Page> pages;
-
-struct Page
-{
-    int PhoneNumber;
-    char FirstdName[20];
-    char SecondName[20];
-    char LastName[20];
-    char Address[40];
-    short Dom;
-    short Korpus;
-    short Hata;
-};
 
 void CreateFileMappingPages()
 {
@@ -31,7 +34,7 @@ void CreateFileMappingPages()
 	HANDLE hMapObject;
 	int size = GetFileSize(hFile, NULL);
 
-	hMapObject = CreateFileMapping(hFile, NULL, PAGE_READWRITE, 0, 0, keyName);
+	hMapObject = CreateFileMapping(hFile, NULL, PAGE_READWRITE, 0, size, keyName);
 
 	if (hMapObject == NULL)
 	{
@@ -39,24 +42,7 @@ void CreateFileMappingPages()
 	}
 }
 
-std::vector<Page> FindPages(int number)
-{
-	std::string numberString = std::to_string(number);
-
-	std::vector<Page> findedPages;
-
-	for (int i = 0; i < directoryKeys.size(); i++)
-	{
-		if (directoryKeys.at(i).find(numberString) != std::string::npos)
-		{
-			findedPages.push_back(*directory[std::stoi(directoryKeys.at(i))]);
-		}
-	}
-
-	return findedPages;
-}
-
-void DumpEntries(std::vector<Page> pages)
+void DumpEntries()
 {
 	HANDLE hFile;
 	hFile = CreateFile(fileName, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
@@ -119,19 +105,116 @@ void ReadEntries(Page** entries, DWORD& number_of_entries)
 	CloseHandle(hMapFile);
 }
 
-extern "C" _declspec(dllexport) void ReadData(std::map<int, Page> *directory)
+std::wstring GetExePath()
+{
+	TCHAR buffer[MAX_PATH];
+	GetModuleFileName(NULL, buffer, MAX_PATH);
+	std::wstring::size_type pos = std::wstring(buffer).find_last_of(L"\\/");
+	return std::wstring(buffer).substr(0, pos);
+}
+
+void CopyData(char* dest, const char* source)
+{
+	for (int i = 0; i < std::strlen(source); i++)
+	{
+		dest[i] = source[i];
+		dest[i + 1] = '\0';
+	}
+}
+
+void CopyPage(Page* dest, Page* source)
+{
+	dest->PhoneNumber = source->PhoneNumber;
+	dest->Dom = source->Dom;
+	dest->Hata = source->Hata;
+	dest->Korpus = source->Korpus;
+	CopyData(dest->Address, source->Address);
+	CopyData(dest->FirstName, source->FirstName);
+	CopyData(dest->SecondName, source->SecondName);
+	CopyData(dest->LastName, source->LastName);
+}
+
+void ClearData()
+{
+	delete readPages;
+}
+
+void ReadData()
 {
 	CreateFileMappingPages();
 
-	Page* readPages;
 	DWORD number_of_entries = 0;
 
 	ReadEntries(&readPages, number_of_entries);
 
 	for (int i = 0; i < number_of_entries; i++)
 	{
-		(*directory)[readPages[i].PhoneNumber] = readPages[i];
+		directory[readPages[i].PhoneNumber] = &readPages[i];
+		directoryKeys.push_back(std::to_string(readPages[i].PhoneNumber));
+	}
+}
+
+std::vector<std::string> TransformPagesInString(std::vector<Page> * pages)
+{
+	std::vector<std::string> result;
+
+	for (int i = 0; i < pages->size(); i++)
+	{
+		std::string temp;
+		temp += std::to_string(pages->at(i).PhoneNumber);
+		temp += " | ";
+		temp += pages->at(i).FirstName;
+		temp += " | ";
+		temp += pages->at(i).SecondName;
+		temp += " | ";
+		temp += pages->at(i).LastName;
+		temp += " | ";
+		temp += pages->at(i).Address;
+		temp += " | ";
+		temp += std::to_string(pages->at(i).Dom);
+		temp += " | ";
+		temp += std::to_string(pages->at(i).Korpus);
+		temp += " | ";
+		temp += std::to_string(pages->at(i).Hata);
+
+		result.push_back(temp);
+	}
+	return result;
+}
+
+std::vector<Page> FindPages(int number)
+{
+	if (directoryKeys.size() == 0)
+		ReadData();
+
+	std::string numberString = std::to_string(number);
+
+	std::vector<Page> findedPages;
+
+	if (number == -1)
+	{
+		for (int i = 0; i < directoryKeys.size(); i++)
+		{
+			findedPages.push_back(*directory[std::stoi(directoryKeys.at(i))]);
+		}
+		return findedPages;
 	}
 
-	if (number_of_entries != 0) delete readPages;
+	for (int i = 0; i < directoryKeys.size(); i++)
+	{
+		if (directoryKeys.at(i).find(numberString) != std::string::npos)
+		{
+			findedPages.push_back(*directory[std::stoi(directoryKeys.at(i))]);
+		}
+	}
+
+	return findedPages;
+}
+
+extern "C" _declspec(dllexport) std::vector<std::string> FindDataByPhoneNuber(int number)
+{
+	std::vector<Page> tempPages = FindPages(number);
+	std::vector<std::string> result = TransformPagesInString(&tempPages);
+	
+	return result;
 }

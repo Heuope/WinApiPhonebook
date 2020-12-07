@@ -4,6 +4,9 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <Windows.h>
 #include <windowsx.h>
 #include <string>
+#include <vector>
+#include <mbstring.h>
+#include <stdlib.h>
 
 #define ID_LIST 1
 #define BUFFERSIZE 5000
@@ -11,14 +14,13 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
-typedef int(__stdcall* PFN_MyFunction)();
-typedef void(*MYFUNC)(char*);
+typedef std::vector<std::string>(*MYFUNC)(int);
 
 TCHAR dllName[] = TEXT("TelephonyLib");
 
 HINSTANCE hMyDll;
 HWND hListBox;
-HWND Text;
+HWND PhoneNumber;
 
 int CALLBACK  wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR szCmdLine, int nCmdShow)
 {
@@ -66,9 +68,7 @@ void CreateUI(HWND hEdit, HWND hWnd)
 		WS_CHILD | WS_VISIBLE | LBS_STANDARD |
 		LBS_WANTKEYBOARDINPUT,
 		20, 50, 500, 300,
-		hWnd, (HMENU)ID_LIST, nullptr, nullptr);
-
-	SendMessage(hListBox, LB_ADDSTRING, 0, (LPARAM)(LPSTR)"we");
+		hWnd, (HMENU)ID_LIST, nullptr, nullptr);	
 
 	HWND hChangeColor = CreateWindow(
 		L"BUTTON",
@@ -77,12 +77,53 @@ void CreateUI(HWND hEdit, HWND hWnd)
 		20, 20, 50, 20, hWnd, reinterpret_cast<HMENU>(0), nullptr, nullptr
 	);
 
-	Text = CreateWindow(
+	PhoneNumber = CreateWindow(
 		L"EDIT",
 		L"",
 		WS_BORDER | WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
 		80, 20, 440, 20, hWnd, reinterpret_cast<HMENU>(14), nullptr, nullptr
 	);
+}
+
+int CastChar(LPTSTR str)
+{
+	char* a = new char[50];
+
+	for (int i = 0; i < 50; i++)
+	{
+		a[i] = str[i];
+	}
+
+	return atoi(a);
+}
+
+int GetLength(const LPTSTR a)
+{
+	for (int i = 0; i < 1024; i++)
+	{
+		if (a[i] == '\0')
+			return i;
+	}
+}
+
+void TransformToLptstr(TCHAR* dest, std::string source)
+{
+	for (int i = 0; i < source.length(); i++)
+	{
+		dest[i] = source[i];
+	}
+	dest[source.length()] = '\0';
+}
+
+int GetPhoneNumber()
+{
+	LPTSTR pBuffer = new TCHAR[128];
+	GetWindowText(PhoneNumber, pBuffer, 50);
+
+	if (GetLength(pBuffer) == 0)
+		return -1;
+
+	return CastChar(pBuffer);
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -100,32 +141,30 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			switch (LOWORD(wParam))
 			{
 				case 0:
-					LPTSTR pBuffer = new TCHAR[128];
-					GetWindowText(Text, pBuffer, 128);
-
 					// Load data from dll					
+					HINSTANCE hMyDll;
 					if ((hMyDll = LoadLibrary(dllName)) != NULL)
-					{ 
+					{
 						MYFUNC pfnMyFunction;
 
-						pfnMyFunction = (MYFUNC)GetProcAddress(hMyDll, "Summa");
+						pfnMyFunction = (MYFUNC)GetProcAddress(hMyDll, "FindDataByPhoneNuber");
+						
+						std::vector<std::string> data = pfnMyFunction(GetPhoneNumber());
 
-						int iCode = pfnMyFunction(1, 2);
+						SendMessage(hListBox, LB_RESETCONTENT, 0, 0);
 
-						FreeLibrary(hMyDll);
-					}										
+						for (int i = 0; i < data.size(); i++)
+						{							
+							TCHAR lpStr[256];							
+							TransformToLptstr(lpStr, data.at(i));
+
+							SendMessage(hListBox, LB_ADDSTRING, 0, (LPARAM)(LPSTR)lpStr);
+						}
+					}
 					break;
 				default:
 					break;
 			}
-			break;
-		case WM_RBUTTONDOWN:
-			break;
-		case WM_LBUTTONDOWN:
-			break;
-		case WM_LBUTTONUP:
-			break;
-		case WM_MOUSEMOVE:
 			break;
 		case WM_DESTROY:
 			PostQuitMessage(EXIT_SUCCESS);
