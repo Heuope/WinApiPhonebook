@@ -70,18 +70,25 @@ void CreateUI(HWND hEdit, HWND hWnd)
 		20, 50, 500, 300,
 		hWnd, (HMENU)ID_LIST, nullptr, nullptr);	
 
-	HWND hChangeColor = CreateWindow(
+	HWND hFindButtonSimple = CreateWindow(
 		L"BUTTON",
-		L"Find",
+		L"Simple find",
 		WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-		20, 20, 50, 20, hWnd, reinterpret_cast<HMENU>(0), nullptr, nullptr
+		20, 20, 80, 20, hWnd, reinterpret_cast<HMENU>(0), nullptr, nullptr
+	);
+
+	HWND hFindButtonByBlock = CreateWindow(
+		L"BUTTON",
+		L"Block find",
+		WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+		105, 20, 80, 20, hWnd, reinterpret_cast<HMENU>(1), nullptr, nullptr
 	);
 
 	PhoneNumber = CreateWindow(
 		L"EDIT",
 		L"",
 		WS_BORDER | WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
-		80, 20, 440, 20, hWnd, reinterpret_cast<HMENU>(14), nullptr, nullptr
+		190, 20, 330, 20, hWnd, reinterpret_cast<HMENU>(14), nullptr, nullptr
 	);
 }
 
@@ -148,14 +155,35 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 						MYFUNC pfnMyFunction;
 
 						pfnMyFunction = (MYFUNC)GetProcAddress(hMyDll, "FindDataByPhoneNuber");
-						
+						// Search by phone number
 						std::vector<std::string> data = pfnMyFunction(GetPhoneNumber());
 
 						SendMessage(hListBox, LB_RESETCONTENT, 0, 0);
 
 						for (int i = 0; i < data.size(); i++)
-						{							
-							TCHAR lpStr[256];							
+						{
+							TCHAR lpStr[256];		
+							TransformToLptstr(lpStr, data.at(i));
+
+							SendMessage(hListBox, LB_ADDSTRING, 0, (LPARAM)(LPSTR)lpStr);
+						}
+					}
+					break;
+				case 1:
+					// Load data from dll					
+					if ((hMyDll = LoadLibrary(dllName)) != NULL)
+					{
+						MYFUNC pfnMyFunction;
+
+						pfnMyFunction = (MYFUNC)GetProcAddress(hMyDll, "FindDataByPhoneNumberInBlock");
+						// Search by phone number
+						std::vector<std::string> data = pfnMyFunction(GetPhoneNumber());
+
+						SendMessage(hListBox, LB_RESETCONTENT, 0, 0);
+
+						for (int i = 0; i < data.size(); i++)
+						{
+							TCHAR lpStr[256];
 							TransformToLptstr(lpStr, data.at(i));
 
 							SendMessage(hListBox, LB_ADDSTRING, 0, (LPARAM)(LPSTR)lpStr);

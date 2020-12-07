@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 TCHAR keyName[] = TEXT("WinApiTelephony");
-TCHAR fileName[] = TEXT("C:\\Users\\konst\\Desktop\\WinApiPhonebook\\Telephony\\x64\\Debug\\s");
+TCHAR fileName[] = TEXT("..\\telephonyBD");
 
 typedef struct
 {
@@ -154,7 +154,7 @@ void ReadData()
 	}
 }
 
-std::vector<std::string> TransformPagesInString(std::vector<Page> * pages)
+std::vector<std::string> TransformPagesInString(std::vector<Page>* pages)
 {
 	std::vector<std::string> result;
 
@@ -211,10 +211,100 @@ std::vector<Page> FindPages(int number)
 	return findedPages;
 }
 
+DWORD GetNormalizedBlockSize(SYSTEM_INFO* sinf)
+{
+	DWORD size = sinf->dwAllocationGranularity;
+	DWORD sizePage = sizeof(Page);
+
+	while (size % sizePage != 0)
+		size++;
+
+	return size;
+}
+
+std::vector<Page> ReadEntriesByBlock(Page** entries, int number)
+{
+	SYSTEM_INFO sinf;
+	GetSystemInfo(&sinf);
+	DWORD number_of_entries;
+
+	std::string numberString = std::to_string(number);
+
+	HANDLE hFile = CreateFile(fileName, GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+	HANDLE hFileMapping = CreateFileMapping(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
+
+	DWORD dwFileSizeHigh;
+	__int64 qwFileSize = GetFileSize(hFile, &dwFileSizeHigh);
+	qwFileSize += (((__int64)dwFileSizeHigh) << 32);
+
+	__int64 qwFileOffset = 0;
+
+	CloseHandle(hFile);
+
+	std::vector<Page> temp;
+
+	std::vector<Page> findedPages;
+
+	while (qwFileSize > 0)
+	{
+		DWORD dwBytesInBlock = GetNormalizedBlockSize(&sinf);
+		if (qwFileSize < sinf.dwAllocationGranularity)
+			dwBytesInBlock = (DWORD)qwFileSize;
+
+		DWORD* num_entries = (DWORD*)MapViewOfFile(hFileMapping, FILE_MAP_READ, (DWORD)(qwFileOffset >> 32), (DWORD)(qwFileOffset & 0xffffffff), dwBytesInBlock);
+
+		if (num_entries == NULL)
+		{
+			CloseHandle(hFileMapping);
+		}
+		number_of_entries = *num_entries;
+
+		if (number_of_entries == 0)
+		{
+			*entries = NULL;
+		}
+
+		Page* tmpEntries = (Page*)(num_entries + 1);
+
+		*entries = new Page[*num_entries];
+
+		for (UINT i = 0; i < *num_entries; i++)
+		{
+			std::string tempNumber = std::to_string(tmpEntries[i].PhoneNumber);
+
+			if (tempNumber.find(numberString) != std::string::npos)
+			{
+				Page tempPage;
+
+				CopyPage(&tempPage, &tmpEntries[i]);
+
+				findedPages.push_back(tempPage);
+			}
+		}
+
+		UnmapViewOfFile(num_entries);
+
+		qwFileOffset += dwBytesInBlock;
+		qwFileSize -= dwBytesInBlock;
+	}
+	CloseHandle(hFileMapping);
+	return findedPages;
+}
+
+extern "C" _declspec(dllexport) std::vector<std::string> FindDataByPhoneNumberInBlock(int number)
+{
+	Page* pages;
+
+	std::vector<Page> tempPages = ReadEntriesByBlock(&pages, number);
+	std::vector<std::string> result = TransformPagesInString(&tempPages);
+
+	return result;
+}
+
 extern "C" _declspec(dllexport) std::vector<std::string> FindDataByPhoneNuber(int number)
 {
 	std::vector<Page> tempPages = FindPages(number);
 	std::vector<std::string> result = TransformPagesInString(&tempPages);
-	
+
 	return result;
 }
